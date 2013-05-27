@@ -4,7 +4,7 @@ require "net/http"
 require "net/https"
 require "uri"
 require "json"
-#require 'whois'
+require 'whois'
 
 def fetch(uri_str, limit = 10)
   raise ArgumentError, 'too many HTTP redirects' if limit == 0
@@ -39,9 +39,10 @@ get %r{/isup/(.*)} do
   rawdomain = "#{params[:captures].first}"
 
   $redirects = Array.new
-  domain = 'http://' + rawdomain.split(/:\/\/?/)[-1]
-  if domain =~ /^#{URI::regexp}$/
- #   if Whois.whois(domain).registered?
+  domain = rawdomain.split(/:\/\/?/)[-1]
+  if Whois.whois(domain).registered?
+    domain = 'http://' + domain
+    if domain =~ /^#{URI::regexp}$/
       result = fetch(domain)
       output = {
         'isup_status' => 'SUCCESS',
@@ -51,16 +52,18 @@ get %r{/isup/(.*)} do
         'status' => result.message,
         'redirects' => $redirects,
       }
-#    else
-#    output = {
-#      'isup_status' => 'ERROR_DOMAIN_NOT_REGISTERED',
-#    }
-#  end
+   else
+     output = {
+       'isup_status' => 'ERROR_INCORRECT_URI',
+     }
+  end
   else
     output = {
-      'isup_status' => 'ERROR_INCORRECT_URI',
+      'isup_status' => 'ERROR_DOMAIN_NOT_REGISTERED',
     }
   end
+c = Whois.whois(domain).registered?
+print c
   output.to_json
 end
 
